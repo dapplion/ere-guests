@@ -61,6 +61,20 @@
             ]
         },
         {
+            "name": "zesu",
+            "version": "tests@v21.0.0",
+            "artifacts": [
+                {
+                    "zkvm": "zisk",
+                    "zkvm_version": "v1.2.0-alpha",
+                    "elf_url": "https://github.com/Consensys-Incorporated/zesu-zkvm/releases/download/tests%40v21.0.0/stateless-validator-zesu-zisk-1.2.0-alpha.elf",
+                    "elf_sha256": "883adff32620cbd3e9e5d843124a3a07baf73b2e3ddca7a1b7292bf8e803e380",
+                    "vk_url": "https://github.com/Consensys-Incorporated/zesu-zkvm/releases/download/tests%40v21.0.0/stateless-validator-zesu-zisk-1.2.0-alpha.vk",
+                    "vk_sha256": "f3d5f7af912f231e9f4bb9858ee07d846708b3c283afb3ed01f44820fd224b0b"
+                }
+            ]
+        },
+        {
             "name": "nimbus",
             "version": "v0.2.1-alpha",
             "artifacts": [
