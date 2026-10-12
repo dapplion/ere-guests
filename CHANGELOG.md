@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.1](https://github.com/eth-act/ere-guests/compare/v0.18.0...v0.18.1) (2026-10-12)
+
+
+### Bug Fixes
+
+* re-add zesu stateless validator guest (zisk) ([#95](https://github.com/eth-act/ere-guests/issues/95)) ([72245aa](https://github.com/eth-act/ere-guests/commit/72245aafd9ed9db203849661066bf6af888d0f37))
+
 ## [0.18.0](https://github.com/eth-act/ere-guests/compare/v0.17.1...v0.18.0) (2026-10-06)
 
 
