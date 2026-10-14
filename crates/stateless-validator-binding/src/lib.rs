@@ -14,12 +14,8 @@ extern crate alloc;
 
 mod bind;
 mod error;
-#[cfg(any(test, feature = "host"))]
-pub mod fixture;
 pub mod input;
 mod network;
-#[cfg(test)]
-mod test_support;
 pub mod types;
 pub mod witness;
 

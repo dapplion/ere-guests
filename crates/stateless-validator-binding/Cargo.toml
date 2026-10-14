@@ -21,7 +21,7 @@ libssz-types.workspace = true
 # guest
 default = ["std"]
 std = ["stateless-validator-common/std"]
-# Host-side construction of the beacon state witness, used by fixtures and tests.
+# Host-side construction of the beacon state witness.
 host = ["std"]
 
 [dev-dependencies]

@@ -162,22 +162,130 @@ fn kzg_commitment_to_versioned_hash(
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec;
+
     use const_hex::decode_to_array;
     use libssz_merkle::Sha2Hasher;
-    use stateless_validator_common::guest::input::ExecutionWitness;
+    use stateless_validator_common::guest::input::{
+        ExecutionWitness,
+        new_payload_request::{ExecutionPayloadV4, Withdrawal, WithdrawalRequest},
+    };
 
     use super::*;
     use crate::{
+        input::BindingInput,
         network::Mainnet,
-        test_support::{binding_input, execution_requests, payload},
-        witness::GINDEX_LATEST_EXECUTION_PAYLOAD_BID,
+        types::{BeaconBlockHeader, ExecutionPayloadBid},
+        witness::{GINDEX_LATEST_EXECUTION_PAYLOAD_BID, StateFields, synthesize_witness},
     };
+
+    const SLOT: u64 = 1_000;
+    const GENESIS_TIME: u64 = 1_700_000_000;
+    const BUILDER_INDEX: u64 = 7;
+    const PARENT_BLOCK_ROOT: [u8; 32] = [2; 32];
 
     /// `0x01 || sha256(commitment)[1..]` of the sample blob commitments.
     const VERSIONED_HASHES: [&str; 2] = [
         "010950a9b30853ab22cc7cb66486bd89496f36e066318196b0d5583cbf79fe80",
         "015f8226fae010d7c32127a16cc60c05d963f873462c673df923be0b6f9dd48e",
     ];
+
+    /// A payload whose fields are distinct constants, so a test that moves one can only fail for
+    /// the reason it is testing.
+    fn payload() -> ExecutionPayloadV4 {
+        ExecutionPayloadV4 {
+            parent_hash: [0x11; 32],
+            fee_recipient: [0x22; 20],
+            state_root: [0x33; 32],
+            receipts_root: [0x44; 32],
+            logs_bloom: [0x55; 256],
+            prev_randao: [0x66; 32],
+            block_number: 4_242,
+            gas_limit: 30_000_000,
+            gas_used: 21_000,
+            timestamp: GENESIS_TIME + SLOT * 12,
+            extra_data: vec![0xee; 4].try_into().unwrap(),
+            base_fee_per_gas: [0x77; 32],
+            block_hash: [0x88; 32],
+            transactions: vec![vec![0x02, 0xf8].into()].into(),
+            withdrawals: vec![Withdrawal {
+                index: 9,
+                validator_index: 10,
+                address: [0x99; 20],
+                amount: 32_000_000_000,
+            }]
+            .into(),
+            blob_gas_used: 0,
+            excess_blob_gas: 0,
+            block_access_list: vec![0xaa].into(),
+            slot_number: SLOT,
+        }
+    }
+
+    /// One withdrawal request, so the requests root is not the empty one.
+    fn execution_requests() -> ExecutionRequestsGloas {
+        ExecutionRequestsGloas {
+            withdrawals: vec![WithdrawalRequest {
+                source_address: [0xbb; 20],
+                validator_pubkey: [0xcc; 48],
+                amount: 1,
+            }]
+            .into(),
+            ..ExecutionRequestsGloas::default()
+        }
+    }
+
+    /// The state and envelope that committed to [`payload`], as a prover builds them from a real
+    /// beacon state.
+    fn binding_input() -> BindingInput {
+        let payload = payload();
+        let execution_requests = execution_requests();
+        let state = synthesize_witness(
+            &Sha2Hasher,
+            StateFields {
+                genesis_time: GENESIS_TIME,
+                slot: SLOT,
+                latest_block_header: BeaconBlockHeader {
+                    slot: SLOT,
+                    proposer_index: 11,
+                    parent_root: PARENT_BLOCK_ROOT,
+                    state_root: [0; 32],
+                    body_root: [3; 32],
+                },
+                latest_block_hash: payload.parent_hash,
+                latest_execution_payload_bid: ExecutionPayloadBid {
+                    parent_block_hash: payload.parent_hash,
+                    parent_block_root: PARENT_BLOCK_ROOT,
+                    block_hash: payload.block_hash,
+                    prev_randao: payload.prev_randao,
+                    fee_recipient: payload.fee_recipient,
+                    gas_limit: payload.gas_limit,
+                    builder_index: BUILDER_INDEX,
+                    slot: SLOT,
+                    value: 0,
+                    execution_payment: 0,
+                    blob_kzg_commitments: vec![[0xd1; 48], [0xd2; 48]].into(),
+                    execution_requests_root: execution_requests.hash_tree_root(&Sha2Hasher),
+                },
+                payload_expected_withdrawals_root: payload.withdrawals.hash_tree_root(&Sha2Hasher),
+            },
+            [0; 32],
+        );
+        let mut header = state.latest_block_header.clone();
+        header.state_root = state.state_root;
+
+        BindingInput {
+            state,
+            envelope: ExecutionPayloadEnvelope {
+                payload,
+                execution_requests,
+                builder_index: BUILDER_INDEX,
+                beacon_block_root: header.hash_tree_root(&Sha2Hasher),
+                parent_beacon_block_root: PARENT_BLOCK_ROOT,
+            },
+            execution_witness: ExecutionWitness::default(),
+        }
+    }
 
     #[test]
     fn binds_a_payload_envelope_to_its_beacon_block() {
@@ -204,7 +312,7 @@ mod tests {
                         .map(|hash| decode_to_array(hash).unwrap())
                         .collect::<Vec<VersionedHash>>()
                         .into(),
-                    parent_beacon_block_root: [2; 32],
+                    parent_beacon_block_root: PARENT_BLOCK_ROOT,
                     execution_requests: execution_requests(),
                 }),
                 witness: ExecutionWitness::default(),
